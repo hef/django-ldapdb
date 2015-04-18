@@ -36,7 +36,12 @@ from ldap3.utils.dn import escape_attribute_value
 
 
 def escape_ldap_filter(value):
-    return escape_attribute_value(value)
+    s = value.replace('\\', r'\5c')
+    s = s.replace(r'*', r'\2a')
+    s = s.replace(r'(', r'\28')
+    s = s.replace(r')', r'\29')
+    s = s.replace('\x00', r'\00')
+    return s
 
 # Legacy single database support
 if hasattr(settings, 'LDAPDB_SERVER_URI'):
