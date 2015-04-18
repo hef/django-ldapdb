@@ -30,7 +30,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-import ldap
+import ldap3
 
 from django.db.models.sql import aggregates, compiler
 from django.db.models.sql.where import AND, OR
@@ -117,15 +117,12 @@ class SQLCompiler(object):
         if not filterstr:
             return
 
-        try:
-            vals = self.connection.search_s(
-                self.query.model.base_dn,
-                self.query.model.search_scope,
-                filterstr=filterstr,
-                attrlist=['dn'],
-            )
-        except ldap.NO_SUCH_OBJECT:
-            vals = []
+        vals = self.connection.search(
+            search_base=self.query.model.base_dn,
+            search_scope=self.query.model.search_scope,
+            search_filter=filterstr,
+            attributes=['dn'],
+        )
 
         if not vals:
             return None
@@ -156,14 +153,13 @@ class SQLCompiler(object):
 
         attrlist = [x.db_column for x in fields if x.db_column]
 
-        try:
-            vals = self.connection.search_s(
-                self.query.model.base_dn,
-                self.query.model.search_scope,
-                filterstr=filterstr,
-                attrlist=attrlist,
-            )
-        except ldap.NO_SUCH_OBJECT:
+        vals = self.connection.search(
+            search_base=self.query.model.base_dn,
+            search_scope=self.query.model.search_scope,
+            search_filter=filterstr,
+            attributes=attrlist,
+        )
+        if not len(vals):
             return
 
         # perform sorting
@@ -251,11 +247,11 @@ class SQLDeleteCompiler(compiler.SQLDeleteCompiler, SQLCompiler):
             return
 
         try:
-            vals = self.connection.search_s(
-                self.query.model.base_dn,
-                self.query.model.search_scope,
-                filterstr=filterstr,
-                attrlist=['dn'],
+            vals = self.connection.search(
+                search_base=self.query.model.base_dn,
+                search_scope=self.query.model.search_scope,
+                search_filter=filterstr,
+                attributes=['dn'],
             )
         except ldap.NO_SUCH_OBJECT:
             return

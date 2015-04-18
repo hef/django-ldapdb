@@ -30,7 +30,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-import ldap
+import ldap3
 import django
 
 from django.db.backends import (BaseDatabaseFeatures, BaseDatabaseOperations,
@@ -96,19 +96,18 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             self.connection = None
 
     def ensure_connection(self):
+        tls = None
         if self.connection is None:
-            self.connection = ldap.initialize(self.settings_dict['NAME'])
-
-            options = self.settings_dict.get('CONNECTION_OPTIONS', {})
-            for opt, value in options.items():
-                self.connection.set_option(opt, value)
-
             if self.settings_dict.get('TLS', False):
-                self.connection.start_tls_s()
+                tls = TLS()
 
-            self.connection.simple_bind_s(
-                self.settings_dict['USER'],
-                self.settings_dict['PASSWORD'])
+            server = ldap3.Server( self.settings_dict['NAME'], tls=tls )
+            self.connection = ldap3.Connection(
+                server,
+                user=self.settings_dict['USER'],
+                password=self.settings_dict['PASSWORD'],
+                auto_bind=True
+            )
 
     def _commit(self):
         pass
@@ -122,26 +121,27 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     def add_s(self, dn, modlist):
         cursor = self._cursor()
-        return cursor.connection.add_s(dn.encode(self.charset), modlist)
+        return cursor.connection.add(dn.encode(self.charset), modlist)
 
     def delete_s(self, dn):
         cursor = self._cursor()
-        return cursor.connection.delete_s(dn.encode(self.charset))
+        return cursor.connection.delete(dn.encode(self.charset))
 
     def modify_s(self, dn, modlist):
         cursor = self._cursor()
-        return cursor.connection.modify_s(dn.encode(self.charset), modlist)
+        return cursor.connection.modify(dn.encode(self.charset), modlist)
 
     def rename_s(self, dn, newrdn):
         cursor = self._cursor()
-        return cursor.connection.rename_s(dn.encode(self.charset),
+        return cursor.connection.modify_dn(dn.encode(self.charset),
                                           newrdn.encode(self.charset))
 
     def search_s(self, base, scope, filterstr='(objectClass=*)',
                  attrlist=None):
         cursor = self._cursor()
-        results = cursor.connection.search_s(base, scope,
+        results = cursor.connection.search(base,
                                              filterstr.encode(self.charset),
+                                             scope,
                                              attrlist)
         output = []
         for dn, attrs in results:

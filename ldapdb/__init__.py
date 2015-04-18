@@ -31,11 +31,12 @@
 #
 
 from django.conf import settings
-import ldap.filter
+from ldap3.utils.conv import escape_bytes
+from ldap3.utils.dn import escape_attribute_value
 
 
 def escape_ldap_filter(value):
-    return ldap.filter.escape_filter_chars(value)
+    return escape_attribute_value(value)
 
 # Legacy single database support
 if hasattr(settings, 'LDAPDB_SERVER_URI'):
